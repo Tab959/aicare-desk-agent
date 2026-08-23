@@ -1,0 +1,142 @@
+{
+  "contractVersion": "1",
+  "request": {
+    "tenantId": "tenant-contract-001",
+    "customerId": "customer-contract-001",
+    "conversationId": "conversation-contract-001",
+    "runId": "run-contract-001",
+    "triggerMessageId": "message-contract-001",
+    "triggerSequence": 12,
+    "userMessage": "CDK 无法激活",
+    "businessContext": {
+      "subject": "CDK 激活问题",
+      "orderId": "order-contract-001",
+      "orderNo": "AD20260001",
+      "orderStatus": "PAID",
+      "entitlementId": "entitlement-contract-001",
+      "entitlementType": "CDK",
+      "entitlementStatus": "DELIVERED"
+    }
+  },
+  "events": [
+    {
+      "type": "RUN_ACCEPTED",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 1
+    },
+    {
+      "type": "RUN_HEARTBEAT",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 2
+    },
+    {
+      "type": "ROUTE_SELECTED",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 3,
+      "routeCode": "AFTER_SALES",
+      "agentCode": "AFTER_SALES_AGENT"
+    },
+    {
+      "type": "TOKEN_DELTA",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 4,
+      "content": "正在核查"
+    },
+    {
+      "type": "FINAL_MESSAGE",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 5,
+      "content": "请先确认 Steam 激活区域。"
+    },
+    {
+      "type": "HANDOFF_REQUESTED",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 5,
+      "reason": "用户明确要求人工客服",
+      "priority": "HIGH",
+      "summary": "已完成基础排查"
+    },
+    {
+      "type": "ESCALATION_REQUESTED",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 5,
+      "issueType": "CDK_INVALID",
+      "reason": "基础排查后仍无法激活",
+      "summary": "建议 Java 校验后创建售后工单"
+    },
+    {
+      "type": "RUN_FAILED",
+      "runId": "run-contract-001",
+      "conversationId": "conversation-contract-001",
+      "triggerMessageId": "message-contract-001",
+      "triggerSequence": 12,
+      "eventIndex": 5,
+      "errorCode": "MODEL_TIMEOUT",
+      "retryable": true,
+      "userSafeMessage": "AI客服响应超时，请稍后重试或转人工客服。"
+    }
+  ],
+  "invalidEvents": [
+    {
+      "name": "handoffMissingSummary",
+      "payload": {
+        "type": "HANDOFF_REQUESTED",
+        "runId": "run-contract-001",
+        "conversationId": "conversation-contract-001",
+        "triggerMessageId": "message-contract-001",
+        "triggerSequence": 12,
+        "eventIndex": 5,
+        "reason": "用户明确要求人工客服",
+        "priority": "HIGH"
+      }
+    },
+    {
+      "name": "escalationMissingSummary",
+      "payload": {
+        "type": "ESCALATION_REQUESTED",
+        "runId": "run-contract-001",
+        "conversationId": "conversation-contract-001",
+        "triggerMessageId": "message-contract-001",
+        "triggerSequence": 12,
+        "eventIndex": 5,
+        "issueType": "CDK_INVALID",
+        "reason": "基础排查后仍无法激活"
+      }
+    },
+    {
+      "name": "failureUsesUnstableErrorCode",
+      "payload": {
+        "type": "RUN_FAILED",
+        "runId": "run-contract-001",
+        "conversationId": "conversation-contract-001",
+        "triggerMessageId": "message-contract-001",
+        "triggerSequence": 12,
+        "eventIndex": 5,
+        "errorCode": "model-timeout",
+        "retryable": true,
+        "userSafeMessage": "AI客服响应超时，请稍后重试或转人工客服。"
+      }
+    }
+  ]
+}

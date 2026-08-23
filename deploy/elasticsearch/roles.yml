@@ -1,0 +1,24 @@
+# Agent在线检索/写入用户只访问aicare-kb前缀，不拥有集群配置权限。
+aicare_agent_rag:
+  cluster:
+    - monitor
+  indices:
+    - names:
+        - "aicare-kb-*"
+      privileges:
+        - read
+        - write
+        - view_index_metadata
+      allow_restricted_indices: false
+
+# 索引初始化账户与在线账户分离；仅初始化命令使用该角色。
+aicare_agent_rag_admin:
+  cluster:
+    - monitor
+    - manage_index_templates
+  indices:
+    - names:
+        - "aicare-kb-*"
+      privileges:
+        - all
+      allow_restricted_indices: false

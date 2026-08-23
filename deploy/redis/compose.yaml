@@ -1,0 +1,117 @@
+name: aicare-agent-redis
+
+services:
+  agent-redis-primary:
+    image: redis:7.4-alpine
+    container_name: aicare-agent-redis-primary
+    restart: unless-stopped
+    network_mode: host
+    entrypoint: ["/opt/aicare/redis-entrypoint.sh"]
+    environment:
+      AICARE_REDIS_ROLE: primary
+      AICARE_REDIS_PORT: "6380"
+    volumes:
+      - agent-redis-primary-data:/data
+      - ./redis-entrypoint.sh:/opt/aicare/redis-entrypoint.sh:ro
+      - ./redis-healthcheck.sh:/opt/aicare/redis-healthcheck.sh:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-password:/run/secrets/agent-redis-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-replication-password:/run/secrets/agent-redis-replication-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-management-password:/run/secrets/agent-redis-sentinel-management-password:ro
+    healthcheck:
+      test: ["CMD", "/opt/aicare/redis-healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 256m
+    security_opt: ["no-new-privileges:true"]
+
+  agent-redis-replica:
+    image: redis:7.4-alpine
+    container_name: aicare-agent-redis-replica
+    restart: unless-stopped
+    network_mode: host
+    entrypoint: ["/opt/aicare/redis-entrypoint.sh"]
+    environment:
+      AICARE_REDIS_ROLE: replica
+      AICARE_REDIS_PORT: "6381"
+    depends_on:
+      agent-redis-primary:
+        condition: service_healthy
+    volumes:
+      - agent-redis-replica-data:/data
+      - ./redis-entrypoint.sh:/opt/aicare/redis-entrypoint.sh:ro
+      - ./redis-healthcheck.sh:/opt/aicare/redis-healthcheck.sh:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-password:/run/secrets/agent-redis-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-replication-password:/run/secrets/agent-redis-replication-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-management-password:/run/secrets/agent-redis-sentinel-management-password:ro
+    healthcheck:
+      test: ["CMD", "/opt/aicare/redis-healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 256m
+    security_opt: ["no-new-privileges:true"]
+
+  agent-redis-sentinel-1: &sentinel
+    image: redis:7.4-alpine
+    container_name: aicare-agent-redis-sentinel-1
+    restart: unless-stopped
+    network_mode: host
+    entrypoint: ["/opt/aicare/sentinel-entrypoint.sh"]
+    environment:
+      AICARE_SENTINEL_PORT: "26379"
+    depends_on:
+      agent-redis-primary:
+        condition: service_healthy
+      agent-redis-replica:
+        condition: service_healthy
+    volumes:
+      - agent-redis-sentinel-1-data:/data
+      - ./sentinel-entrypoint.sh:/opt/aicare/sentinel-entrypoint.sh:ro
+      - ./sentinel-healthcheck.sh:/opt/aicare/sentinel-healthcheck.sh:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-client-password:/run/secrets/agent-redis-sentinel-client-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-peer-password:/run/secrets/agent-redis-sentinel-peer-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-management-password:/run/secrets/agent-redis-sentinel-management-password:ro
+    healthcheck:
+      test: ["CMD", "/opt/aicare/sentinel-healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 20s
+    mem_limit: 96m
+    security_opt: ["no-new-privileges:true"]
+
+  agent-redis-sentinel-2:
+    <<: *sentinel
+    container_name: aicare-agent-redis-sentinel-2
+    environment:
+      AICARE_SENTINEL_PORT: "26380"
+    volumes:
+      - agent-redis-sentinel-2-data:/data
+      - ./sentinel-entrypoint.sh:/opt/aicare/sentinel-entrypoint.sh:ro
+      - ./sentinel-healthcheck.sh:/opt/aicare/sentinel-healthcheck.sh:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-client-password:/run/secrets/agent-redis-sentinel-client-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-peer-password:/run/secrets/agent-redis-sentinel-peer-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-management-password:/run/secrets/agent-redis-sentinel-management-password:ro
+
+  agent-redis-sentinel-3:
+    <<: *sentinel
+    container_name: aicare-agent-redis-sentinel-3
+    environment:
+      AICARE_SENTINEL_PORT: "26381"
+    volumes:
+      - agent-redis-sentinel-3-data:/data
+      - ./sentinel-entrypoint.sh:/opt/aicare/sentinel-entrypoint.sh:ro
+      - ./sentinel-healthcheck.sh:/opt/aicare/sentinel-healthcheck.sh:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-client-password:/run/secrets/agent-redis-sentinel-client-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-peer-password:/run/secrets/agent-redis-sentinel-peer-password:ro
+      - /home/aicare/.config/aicare/secrets/agent-redis-sentinel-management-password:/run/secrets/agent-redis-sentinel-management-password:ro
+
+volumes:
+  agent-redis-primary-data:
+  agent-redis-replica-data:
+  agent-redis-sentinel-1-data:
+  agent-redis-sentinel-2-data:
+  agent-redis-sentinel-3-data:

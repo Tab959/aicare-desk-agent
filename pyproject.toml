@@ -1,0 +1,80 @@
+# pyproject.toml是Python项目的标准构建、依赖和工具配置入口；TOML使用#编写注释。
+# uv根据本文件解析直接依赖，并把完整传递依赖版本固定到自动生成的uv.lock。
+
+# [project]保存可安装Python包的名称、版本、说明、Python版本范围和运行依赖。
+[project]
+# 发布/安装使用的包名；Python导入名则是aicare_agent_service。
+name = "aicare-agent-service"
+# 应与src/aicare_agent_service/__init__.py中的__version__保持一致。
+version = "0.1.0"
+description = "AICare Desk Python customer-service Agent runtime."
+# 支持Python 3.11至3.13，不包含3.14。
+requires-python = ">=3.11,<3.14"
+# 生产运行需要的直接依赖全部固定精确版本，降低环境漂移。
+dependencies = [
+    "fastapi==0.141.1",
+    "httpx==0.28.1",
+    "langchain==1.3.14",
+    "langchain-deepseek==1.1.0",
+    "langgraph==1.2.10",
+    "langgraph-checkpoint-postgres==3.1.2",
+    "langsmith==0.10.17",
+    "pydantic==2.13.4",
+    "pydantic-settings==2.15.0",
+    "psycopg[binary]==3.3.4",
+    "pycryptodome==3.23.0",
+    "python-dotenv==1.2.2",
+    "redis[hiredis]==8.0.0",
+    "uvicorn[standard]==0.52.1",
+    "elasticsearch[async]==8.19.1",
+    "flagembedding==1.4.0",
+    "pypdf==6.1.3",
+    "python-docx==1.2.0",
+    "beautifulsoup4==4.14.2",
+    "markdown-it-py==4.0.0",
+    "huggingface-hub==0.35.3",
+]
+
+# 本地 Windows 调试必须先切换 psycopg 兼容的 Selector 事件循环，再调用官方 CLI。
+[project.scripts]
+aicare-langgraph = "aicare_agent_service.dev.langgraph_cli:main"
+aicare-rag-models-init = "aicare_agent_service.rag.init_models:main"
+
+# dependency-groups.dev只在开发/测试环境安装，不属于生产运行时必需包。
+[dependency-groups]
+dev = [
+    "langgraph-cli[inmem]==0.4.31",
+    "mypy==2.3.0",
+    "psutil==7.2.2",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.16.2",
+]
+
+# PEP 517构建配置：setuptools根据src布局生成可安装wheel/sdist。
+[build-system]
+requires = ["setuptools==84.0.0"]
+build-backend = "setuptools.build_meta"
+
+# 自动发现src目录下的aicare_agent_service包。
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# 把版本化Markdown提示词打入wheel，生产部署不依赖源码目录偶然存在。
+[tool.setuptools.package-data]
+aicare_agent_service = ["prompts/*.md"]
+
+# pytest默认测试目录、源码导入路径和显式集成测试marker。
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+markers = [
+    "bge_live: requires locked local BGE models and the real Elasticsearch runtime",
+    "redis_integration: requires a real Redis instance configured by AICARE_AGENT_TEST_REDIS_URL",
+    "postgres_integration: requires a dedicated PostgreSQL instance configured by AICARE_AGENT_TEST_POSTGRES_DSN",
+]
+
+# Ruff同时负责静态检查和格式化；目标语法按最低支持的Python 3.11。
+[tool.ruff]
+line-length = 100
+target-version = "py311"

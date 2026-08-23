@@ -1,0 +1,179 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AICare Desk Agent Internal Read Tool API",
+    "version": "1.0",
+    "description": "Python Agent调用Java业务事实的内部只读契约。身份由Java生成并通过Python Runtime注入，模型不得提供身份或连接参数。"
+  },
+  "paths": {
+    "/api/internal/v1/agent/tools/{toolName}/invoke": {
+      "post": {
+        "operationId": "invokeAgentReadTool",
+        "summary": "调用一个固定白名单内的Agent只读工具",
+        "security": [{"AgentServiceToken": []}],
+        "parameters": [
+          {"name": "toolName", "in": "path", "required": true, "schema": {"$ref": "#/components/schemas/ToolName"}},
+          {"name": "X-Request-Id", "in": "header", "required": true, "schema": {"type": "string", "minLength": 1, "maxLength": 128}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentToolInvokeRequest"}}}
+        },
+        "responses": {
+          "200": {"description": "安全只读结果", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AgentToolInvokeResponse"}}}},
+          "400": {"$ref": "#/components/responses/StableError"},
+          "401": {"$ref": "#/components/responses/StableError"},
+          "403": {"$ref": "#/components/responses/StableError"},
+          "404": {"$ref": "#/components/responses/StableError"},
+          "409": {"$ref": "#/components/responses/StableError"},
+          "503": {"$ref": "#/components/responses/StableError"}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "AgentServiceToken": {"type": "apiKey", "in": "header", "name": "X-AICare-Agent-Service-Token"}
+    },
+    "responses": {
+      "StableError": {
+        "description": "稳定错误；不得包含下游响应或异常堆栈",
+        "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ApiErrorResponse"}}}
+      }
+    },
+    "schemas": {
+      "ToolName": {
+        "type": "string",
+        "enum": [
+          "search_games", "get_game_filters", "get_game_detail", "get_related_games",
+          "get_recommendations", "get_featured_games", "get_sales_ranking", "get_deals",
+          "get_flash_sale_timeline", "get_flash_sale_games", "get_current_user", "get_profile",
+          "list_favorites", "get_cart", "preview_checkout", "list_orders",
+          "get_order_detail", "get_wallet", "list_wallet_transactions", "inspect_entitlement_status"
+        ]
+      },
+      "AgentToolIdentity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["tenantId", "customerId", "conversationId", "runId", "triggerMessageId", "triggerSequence"],
+        "properties": {
+          "tenantId": {"$ref": "#/components/schemas/Identifier"},
+          "customerId": {"$ref": "#/components/schemas/Identifier"},
+          "conversationId": {"$ref": "#/components/schemas/Identifier"},
+          "runId": {"$ref": "#/components/schemas/Identifier"},
+          "triggerMessageId": {"$ref": "#/components/schemas/Identifier"},
+          "triggerSequence": {"type": "integer", "minimum": 1}
+        }
+      },
+      "AgentToolInvokeRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["contractVersion", "toolCallId", "identity", "arguments"],
+        "properties": {
+          "contractVersion": {"const": "1.0"},
+          "toolCallId": {"$ref": "#/components/schemas/Identifier"},
+          "identity": {"$ref": "#/components/schemas/AgentToolIdentity"},
+          "arguments": {"$ref": "#/components/schemas/ToolArguments"}
+        }
+      },
+      "ToolArguments": {
+        "description": "具体参数Schema由路径中的固定toolName选择；多个无参数工具会共享空对象，因此使用anyOf。",
+        "anyOf": [
+          {"$ref": "#/components/schemas/SearchGamesArguments"},
+          {"$ref": "#/components/schemas/GetGameFiltersArguments"},
+          {"$ref": "#/components/schemas/GetGameDetailArguments"},
+          {"$ref": "#/components/schemas/GetRelatedGamesArguments"},
+          {"$ref": "#/components/schemas/GetRecommendationsArguments"},
+          {"$ref": "#/components/schemas/GetFeaturedGamesArguments"},
+          {"$ref": "#/components/schemas/GetSalesRankingArguments"},
+          {"$ref": "#/components/schemas/GetDealsArguments"},
+          {"$ref": "#/components/schemas/GetFlashSaleTimelineArguments"},
+          {"$ref": "#/components/schemas/GetFlashSaleGamesArguments"},
+          {"$ref": "#/components/schemas/GetCurrentUserArguments"},
+          {"$ref": "#/components/schemas/GetProfileArguments"},
+          {"$ref": "#/components/schemas/ListFavoritesArguments"},
+          {"$ref": "#/components/schemas/GetCartArguments"},
+          {"$ref": "#/components/schemas/PreviewCheckoutArguments"},
+          {"$ref": "#/components/schemas/ListOrdersArguments"},
+          {"$ref": "#/components/schemas/GetOrderDetailArguments"},
+          {"$ref": "#/components/schemas/GetWalletArguments"},
+          {"$ref": "#/components/schemas/ListWalletTransactionsArguments"},
+          {"$ref": "#/components/schemas/InspectEntitlementStatusArguments"}
+        ]
+      },
+      "EmptyArguments": {"type": "object", "additionalProperties": false, "maxProperties": 0},
+      "CursorArguments": {
+        "type": "object", "additionalProperties": false,
+        "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10}, "cursor": {"type": ["string", "null"], "minLength": 1, "maxLength": 512}}
+      },
+      "SearchGamesArguments": {"type": "object", "additionalProperties": false, "required": ["query"], "properties": {
+        "query": {"type": "string", "minLength": 1, "maxLength": 200},
+        "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10},
+        "cursor": {"type": ["string", "null"], "minLength": 1, "maxLength": 512},
+        "maxPrice": {"type": ["number", "null"], "minimum": 0},
+        "purchaseMethods": {"type": "array", "maxItems": 8, "items": {"$ref": "#/components/schemas/ShortText"}}
+      }},
+      "GetGameFiltersArguments": {"$ref": "#/components/schemas/EmptyArguments"},
+      "GetGameDetailArguments": {"$ref": "#/components/schemas/GameIdArguments"},
+      "GetRelatedGamesArguments": {"type": "object", "additionalProperties": false, "required": ["gameId"], "properties": {"gameId": {"$ref": "#/components/schemas/Identifier"}, "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 6}}},
+      "GetRecommendationsArguments": {"$ref": "#/components/schemas/CursorArguments"},
+      "GetFeaturedGamesArguments": {"$ref": "#/components/schemas/CursorArguments"},
+      "GetSalesRankingArguments": {"$ref": "#/components/schemas/CursorArguments"},
+      "GetDealsArguments": {"$ref": "#/components/schemas/CursorArguments"},
+      "GetFlashSaleTimelineArguments": {"$ref": "#/components/schemas/EmptyArguments"},
+      "GetFlashSaleGamesArguments": {"type": "object", "additionalProperties": false, "required": ["flashSaleId"], "properties": {"flashSaleId": {"$ref": "#/components/schemas/Identifier"}, "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10}, "cursor": {"type": ["string", "null"], "minLength": 1, "maxLength": 512}}},
+      "GetCurrentUserArguments": {"$ref": "#/components/schemas/EmptyArguments"},
+      "GetProfileArguments": {"$ref": "#/components/schemas/EmptyArguments"},
+      "ListFavoritesArguments": {"$ref": "#/components/schemas/CursorArguments"},
+      "GetCartArguments": {"$ref": "#/components/schemas/EmptyArguments"},
+      "CheckoutItem": {"type": "object", "additionalProperties": false, "required": ["offerId", "quantity"], "properties": {"offerId": {"$ref": "#/components/schemas/Identifier"}, "quantity": {"type": "integer", "minimum": 1, "maximum": 20}}},
+      "PreviewCheckoutArguments": {"type": "object", "additionalProperties": false, "required": ["source"], "properties": {"source": {"enum": ["DIRECT", "CART", "FLASH_SALE"]}, "items": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/CheckoutItem"}}, "cartItemIds": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/Identifier"}}, "flashSaleItemId": {"oneOf": [{"$ref": "#/components/schemas/Identifier"}, {"type": "null"}]}, "quantity": {"type": ["integer", "null"], "minimum": 1, "maximum": 20}}},
+      "ListOrdersArguments": {"type": "object", "additionalProperties": false, "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 10}, "cursor": {"type": ["string", "null"], "minLength": 1, "maxLength": 512}, "status": {"oneOf": [{"$ref": "#/components/schemas/ShortText"}, {"type": "null"}]}}},
+      "GetOrderDetailArguments": {"type": "object", "additionalProperties": false, "required": ["orderId"], "properties": {"orderId": {"$ref": "#/components/schemas/Identifier"}}},
+      "GetWalletArguments": {"$ref": "#/components/schemas/EmptyArguments"},
+      "ListWalletTransactionsArguments": {"$ref": "#/components/schemas/CursorArguments"},
+      "InspectEntitlementStatusArguments": {"type": "object", "additionalProperties": false, "required": ["entitlementId"], "properties": {"entitlementId": {"$ref": "#/components/schemas/Identifier"}}},
+      "GameIdArguments": {"type": "object", "additionalProperties": false, "required": ["gameId"], "properties": {"gameId": {"$ref": "#/components/schemas/Identifier"}}},
+      "AgentToolInvokeResponse": {
+        "type": "object", "additionalProperties": false,
+        "required": ["contractVersion", "requestId", "toolCallId", "toolName", "status", "observedAt", "data"],
+        "properties": {
+          "contractVersion": {"const": "1.0"}, "requestId": {"$ref": "#/components/schemas/Identifier"},
+          "toolCallId": {"$ref": "#/components/schemas/Identifier"}, "toolName": {"$ref": "#/components/schemas/ToolName"},
+          "status": {"const": "SUCCESS"}, "observedAt": {"type": "string", "format": "date-time"},
+          "data": {"$ref": "#/components/schemas/SafeToolData"}
+        }
+      },
+      "SafeToolData": {"oneOf": [
+        {"$ref": "#/components/schemas/GamePageData"}, {"$ref": "#/components/schemas/GameFiltersData"},
+        {"$ref": "#/components/schemas/GameDetailData"}, {"$ref": "#/components/schemas/FlashSaleTimelineData"},
+        {"$ref": "#/components/schemas/CurrentUserData"}, {"$ref": "#/components/schemas/ProfileData"},
+        {"$ref": "#/components/schemas/CartData"}, {"$ref": "#/components/schemas/CheckoutData"},
+        {"$ref": "#/components/schemas/OrderPageData"}, {"$ref": "#/components/schemas/OrderDetailData"},
+        {"$ref": "#/components/schemas/WalletData"}, {"$ref": "#/components/schemas/WalletTransactionPageData"},
+        {"$ref": "#/components/schemas/EntitlementStatusData"}
+      ], "discriminator": {"propertyName": "kind"}},
+      "GameSummary": {"type": "object", "additionalProperties": false, "required": ["gameId", "name", "price", "currency", "purchaseMethods", "available"], "properties": {"gameId": {"$ref": "#/components/schemas/Identifier"}, "name": {"$ref": "#/components/schemas/ShortText"}, "price": {"type": "number", "minimum": 0}, "currency": {"const": "CNY"}, "purchaseMethods": {"type": "array", "maxItems": 8, "items": {"$ref": "#/components/schemas/ShortText"}}, "available": {"type": "boolean"}}},
+      "GamePageData": {"type": "object", "additionalProperties": false, "required": ["kind", "items", "nextCursor"], "properties": {"kind": {"const": "GAME_PAGE"}, "items": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/GameSummary"}}, "nextCursor": {"type": ["string", "null"], "maxLength": 512}}},
+      "GameFiltersData": {"type": "object", "additionalProperties": false, "required": ["kind", "purchaseMethods", "versions"], "properties": {"kind": {"const": "GAME_FILTERS"}, "purchaseMethods": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/ShortText"}}, "versions": {"type": "array", "maxItems": 50, "items": {"$ref": "#/components/schemas/ShortText"}}}},
+      "GameDetailData": {"type": "object", "additionalProperties": false, "required": ["kind", "game", "description", "deliveryMethods", "refundRuleSummary"], "properties": {"kind": {"const": "GAME_DETAIL"}, "game": {"$ref": "#/components/schemas/GameSummary"}, "description": {"type": "string", "minLength": 1, "maxLength": 2000}, "deliveryMethods": {"type": "array", "maxItems": 8, "items": {"$ref": "#/components/schemas/ShortText"}}, "refundRuleSummary": {"type": "string", "minLength": 1, "maxLength": 500}}},
+      "FlashSaleSession": {"type": "object", "additionalProperties": false, "required": ["flashSaleId", "status", "startsAt", "endsAt"], "properties": {"flashSaleId": {"$ref": "#/components/schemas/Identifier"}, "status": {"$ref": "#/components/schemas/ShortText"}, "startsAt": {"type": "string", "format": "date-time"}, "endsAt": {"type": "string", "format": "date-time"}}},
+      "FlashSaleTimelineData": {"type": "object", "additionalProperties": false, "required": ["kind", "previous", "current", "next"], "properties": {"kind": {"const": "FLASH_SALE_TIMELINE"}, "previous": {"oneOf": [{"$ref": "#/components/schemas/FlashSaleSession"}, {"type": "null"}]}, "current": {"oneOf": [{"$ref": "#/components/schemas/FlashSaleSession"}, {"type": "null"}]}, "next": {"oneOf": [{"$ref": "#/components/schemas/FlashSaleSession"}, {"type": "null"}]}}},
+      "CurrentUserData": {"type": "object", "additionalProperties": false, "required": ["kind", "customerId", "displayName"], "properties": {"kind": {"const": "CURRENT_USER"}, "customerId": {"$ref": "#/components/schemas/Identifier"}, "displayName": {"$ref": "#/components/schemas/ShortText"}}},
+      "ProfileData": {"type": "object", "additionalProperties": false, "required": ["kind", "displayName", "registeredAt"], "properties": {"kind": {"const": "PROFILE"}, "displayName": {"$ref": "#/components/schemas/ShortText"}, "registeredAt": {"type": "string", "format": "date-time"}}},
+      "CartItemData": {"type": "object", "additionalProperties": false, "required": ["cartItemId", "offerId", "gameName", "quantity", "unitPrice", "selected", "available"], "properties": {"cartItemId": {"$ref": "#/components/schemas/Identifier"}, "offerId": {"$ref": "#/components/schemas/Identifier"}, "gameName": {"$ref": "#/components/schemas/ShortText"}, "quantity": {"type": "integer", "minimum": 1, "maximum": 20}, "unitPrice": {"type": "number", "minimum": 0}, "selected": {"type": "boolean"}, "available": {"type": "boolean"}}},
+      "CartData": {"type": "object", "additionalProperties": false, "required": ["kind", "items", "selectedTotal", "currency"], "properties": {"kind": {"const": "CART"}, "items": {"type": "array", "maxItems": 50, "items": {"$ref": "#/components/schemas/CartItemData"}}, "selectedTotal": {"type": "number", "minimum": 0}, "currency": {"const": "CNY"}}},
+      "CheckoutData": {"type": "object", "additionalProperties": false, "required": ["kind", "itemCount", "totalAmount", "currency", "available"], "properties": {"kind": {"const": "CHECKOUT_PREVIEW"}, "itemCount": {"type": "integer", "minimum": 1, "maximum": 50}, "totalAmount": {"type": "number", "minimum": 0}, "currency": {"const": "CNY"}, "available": {"type": "boolean"}}},
+      "OrderSummary": {"type": "object", "additionalProperties": false, "required": ["orderId", "orderNo", "status", "totalAmount", "currency", "createdAt", "expiresAt"], "properties": {"orderId": {"$ref": "#/components/schemas/Identifier"}, "orderNo": {"$ref": "#/components/schemas/Identifier"}, "status": {"$ref": "#/components/schemas/ShortText"}, "totalAmount": {"type": "number", "minimum": 0}, "currency": {"const": "CNY"}, "createdAt": {"type": "string", "format": "date-time"}, "expiresAt": {"type": ["string", "null"], "format": "date-time"}}},
+      "OrderPageData": {"type": "object", "additionalProperties": false, "required": ["kind", "items", "nextCursor"], "properties": {"kind": {"const": "ORDER_PAGE"}, "items": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/OrderSummary"}}, "nextCursor": {"type": ["string", "null"], "maxLength": 512}}},
+      "OrderDetailData": {"type": "object", "additionalProperties": false, "required": ["kind", "order", "deliveryTypes", "entitlementIds"], "properties": {"kind": {"const": "ORDER_DETAIL"}, "order": {"$ref": "#/components/schemas/OrderSummary"}, "deliveryTypes": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/ShortText"}}, "entitlementIds": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/Identifier"}}}},
+      "WalletData": {"type": "object", "additionalProperties": false, "required": ["kind", "availableBalance", "currency"], "properties": {"kind": {"const": "WALLET"}, "availableBalance": {"type": "number", "minimum": 0}, "currency": {"const": "CNY"}}},
+      "WalletTransaction": {"type": "object", "additionalProperties": false, "required": ["transactionId", "transactionType", "amount", "balanceAfter", "occurredAt", "orderId"], "properties": {"transactionId": {"$ref": "#/components/schemas/Identifier"}, "transactionType": {"$ref": "#/components/schemas/ShortText"}, "amount": {"type": "number"}, "balanceAfter": {"type": "number", "minimum": 0}, "occurredAt": {"type": "string", "format": "date-time"}, "orderId": {"oneOf": [{"$ref": "#/components/schemas/Identifier"}, {"type": "null"}]}}},
+      "WalletTransactionPageData": {"type": "object", "additionalProperties": false, "required": ["kind", "items", "nextCursor"], "properties": {"kind": {"const": "WALLET_TRANSACTION_PAGE"}, "items": {"type": "array", "maxItems": 20, "items": {"$ref": "#/components/schemas/WalletTransaction"}}, "nextCursor": {"type": ["string", "null"], "maxLength": 512}}},
+      "EntitlementStatusData": {"type": "object", "additionalProperties": false, "required": ["kind", "entitlementId", "entitlementType", "deliveryStatus", "deliveredAt", "requiresManualHandling"], "properties": {"kind": {"const": "ENTITLEMENT_STATUS"}, "entitlementId": {"$ref": "#/components/schemas/Identifier"}, "entitlementType": {"$ref": "#/components/schemas/ShortText"}, "deliveryStatus": {"$ref": "#/components/schemas/ShortText"}, "deliveredAt": {"type": ["string", "null"], "format": "date-time"}, "requiresManualHandling": {"type": "boolean"}}},
+      "ApiErrorResponse": {"type": "object", "additionalProperties": false, "required": ["code", "message", "timestamp"], "properties": {"code": {"enum": ["BAD_REQUEST", "UNAUTHORIZED", "FORBIDDEN", "NOT_FOUND", "CONFLICT", "SERVICE_UNAVAILABLE"]}, "message": {"$ref": "#/components/schemas/ShortText"}, "timestamp": {"type": "string", "format": "date-time"}}},
+      "Identifier": {"type": "string", "minLength": 1, "maxLength": 128},
+      "ShortText": {"type": "string", "minLength": 1, "maxLength": 240}
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Python environments and generated caches
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE and local tooling state
+.idea/
+.vscode/
+.langgraph_api/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+
+# Test and coverage output
+.coverage
+htmlcov/
+.uv-*/
+
+# Local root-level model artifacts must be provisioned from the locked manifest
+/models/

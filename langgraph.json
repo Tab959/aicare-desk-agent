@@ -1,0 +1,11 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "customer_service": "./src/aicare_agent_service/dev/graph_entry.py:graph",
+    "model_playground": "./src/aicare_agent_service/dev/model_playground_entry.py:graph"
+  },
+  "env": ".env",
+  "checkpointer": {
+    "path": "./src/aicare_agent_service/persistence/server_checkpointer.py:generate_server_checkpointer"
+  }
+}
