@@ -2,6 +2,49 @@
 
 Stage 4的Python Agent服务。当前工程提供可锁定依赖、统一Settings、FastAPI健康探针、DeepSeek Provider、PostgreSQL Checkpointer、Redis RunStore、可恢复run生命周期，以及安全预处理、结构化分类、固定路由、输出门禁和终态封装组成的正式LangGraph根图；同时已提供Java只读工具生产客户端、20个固定LangChain工具和专业Agent最小权限能力包，专业子图与RAG将在后续Task接入。
 
+## 四个应用仓库
+
+| 应用 | 仓库 | 默认端口 | 职责 |
+| --- | --- | --- | --- |
+| platform-api | `aicare-desk-platform-api` | `8080` | Java 业务后端，系统事实来源 |
+| customer-web | `aicare-desk-customer-web` | `5173` | C 端 Steam 游戏商城 |
+| staff-web | `aicare-desk-staff-web` | `5174` | B 端客服、运营和管理工作台 |
+| agent-service | `aicare-desk-agent` | `8090` / `2024` | Python Agent、LangGraph、RAG 和模型编排 |
+
+## 启动方式汇总
+
+四个应用拆分为独立仓库后，推荐按以下顺序启动本地开发环境：
+
+1. 启动 `platform-api`，默认提供 `http://localhost:8080`。
+2. 启动 `agent-service` FastAPI，默认提供 `http://127.0.0.1:8090`。
+3. 如需调试 LangGraph/Agent Chat UI，启动 `agent-service` 的 LangGraph dev，默认提供 `http://127.0.0.1:2024`。
+4. 启动 `customer-web`，默认提供 `http://localhost:5173`。
+5. 启动 `staff-web`，默认提供 `http://localhost:5174`。
+
+完整命令：
+
+```powershell
+# 1. Java 后端
+Set-Location D:\code\AICareDesk\aicare-desk-platform-api
+mvn spring-boot:run
+
+# 2. Python Agent FastAPI
+Set-Location D:\code\AICareDesk\aicare-desk-agent
+.\.venv\Scripts\python.exe -m uvicorn aicare_agent_service.main:app --app-dir src --host 127.0.0.1 --port 8090
+
+# 3. LangGraph dev / Agent Chat UI 调试服务
+Set-Location D:\code\AICareDesk\aicare-desk-agent
+.\.venv\Scripts\aicare-langgraph.exe dev --config langgraph.json --no-browser
+
+# 4. C 端前端
+Set-Location D:\code\AICareDesk\aicare-desk-customer-web
+pnpm dev
+
+# 5. B 端前端
+Set-Location D:\code\AICareDesk\aicare-desk-staff-web
+pnpm dev
+```
+
 ## 边界
 
 - Java `platform-api`是统一会话网关和业务事实来源，负责鉴权、WebSocket、消息持久化、会话状态与业务事务。
