@@ -7,8 +7,6 @@ Elasticsearch连接，失败返回503且不暴露连接、认证或异常细节�
 # ``cast`` 只帮助静态类型检查器理解对象类型，运行时不会转换或校验数据。
 from typing import Literal, cast
 
-from elastic_transport import TransportError
-
 # ``APIRouter`` 用于按模块组织路由；``Request`` 表示当前 HTTP 请求及其所属应用。
 from fastapi import APIRouter, Request, Response, status
 
@@ -85,27 +83,55 @@ async def agent_health(request: Request) -> HealthResponse:
 # ``response_model`` 让 FastAPI 校验返回值，并用它生成 OpenAPI Schema。
 @router.get("/health/ready", response_model=ReadinessResponse)
 async def readiness(request: Request, response: Response) -> ReadinessResponse:
-    """返回配置和启用后的Elasticsearch真实就绪状态。"""
-    # 1、未启用RAG时明确返回DISABLED，不创建替代索引实现。
+    """返回配置及启用后的RAG模型、集群、模板和索引真实就绪状态。"""
+    # 1、未启用RAG时全部明确返回DISABLED，不创建替代实现。
     settings = _request_settings(request)
-    elasticsearch_status: Literal["UP", "DOWN", "DISABLED"] = "DISABLED"
+    disabled: Literal["DISABLED"] = "DISABLED"
+    model_status: Literal["UP", "DOWN", "DISABLED"] = disabled
+    cluster_status: Literal["UP", "DOWN", "DISABLED"] = disabled
+    template_status: Literal["UP", "DOWN", "DISABLED"] = disabled
+    alias_status: Literal["UP", "DOWN", "DISABLED"] = disabled
     if settings.rag_enabled:
-        # 2、启用后资源缺失、ping异常或ping失败均按fail-closed返回DOWN。
+        # 2、启用后资源缺失或任一生产检查失败均按fail-closed返回DOWN。
         resources = cast(
             RagRuntimeResources | None,
             getattr(request.app.state, "rag_resources", None),
         )
-        try:
-            is_elasticsearch_ready = resources is not None and await resources.elasticsearch.ping()
-        except (TransportError, OSError):
-            is_elasticsearch_ready = False
-        elasticsearch_status = "UP" if is_elasticsearch_ready else "DOWN"
-        if not is_elasticsearch_ready:
+        if resources is None:
+            model_status = cluster_status = template_status = alias_status = "DOWN"
+        else:
+            report = await resources.readiness.check()
+            model_status = report.models
+            cluster_status = report.elasticsearch_cluster
+            template_status = report.index_template
+            alias_status = report.aliases_mapping
+        if "DOWN" in {model_status, cluster_status, template_status, alias_status}:
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    # 3、总状态与外部依赖状态一致，响应不携带连接或异常细节。
+    # 3、兼容汇总字段只在集群、模板和别名Mapping全部可用时为UP。
+    elasticsearch_status: Literal["UP", "DOWN", "DISABLED"]
+    if cluster_status == disabled:
+        elasticsearch_status = disabled
+    else:
+        elasticsearch_status = (
+            "UP" if cluster_status == template_status == alias_status == "UP" else "DOWN"
+        )
+    # 4、总状态与全部生产检查一致，响应不携带连接、路径、认证或异常细节。
+    overall_down = "DOWN" in {
+        model_status,
+        cluster_status,
+        template_status,
+        alias_status,
+    }
     return ReadinessResponse(
-        status="DOWN" if elasticsearch_status == "DOWN" else "UP",
+        status="DOWN" if overall_down else "UP",
         service=settings.service_name,
         version=settings.service_version,
-        checks=ReadinessChecks(configuration="UP", elasticsearch=elasticsearch_status),
+        checks=ReadinessChecks(
+            configuration="UP",
+            elasticsearch=elasticsearch_status,
+            rag_models=model_status,
+            elasticsearch_cluster=cluster_status,
+            index_template=template_status,
+            aliases_mapping=alias_status,
+        ),
     )

@@ -8,6 +8,7 @@ from typing import Protocol, runtime_checkable
 from langchain_core.runnables import RunnableConfig
 
 from aicare_agent_service.config import Environment
+from aicare_agent_service.contracts.decisions import Citation
 from aicare_agent_service.graph.context import AgentRuntimeContext
 from aicare_agent_service.graph.state import CustomerServiceState
 
@@ -104,5 +105,13 @@ async def invoke_root_branch(
     unexpected = set(raw_update).difference(_ALLOWED_BRANCH_UPDATES)
     if unexpected:
         raise RootBranchContractError("专业子图返回了禁止字段")
-    # 3、复制为普通字典，避免子图在返回后继续修改原映射。
+    # 3、知识引用必须是有限的安全契约实例，不能把原始检索响应带回父图。
+    citations = raw_update.get("citations")
+    if citations is not None and (
+        not isinstance(citations, list)
+        or len(citations) > 6
+        or not all(isinstance(item, Citation) for item in citations)
+    ):
+        raise RootBranchContractError("专业子图返回了非法引用")
+    # 4、复制为普通字典，避免子图在返回后继续修改原映射。
     return dict(raw_update)

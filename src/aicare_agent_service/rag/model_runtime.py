@@ -14,9 +14,14 @@ from elasticsearch import AsyncElasticsearch
 from fastapi import FastAPI
 
 from aicare_agent_service.config import Settings
+from aicare_agent_service.models.factory import create_model_provider
+from aicare_agent_service.rag.elasticsearch_store import ElasticsearchKnowledgeIndex
 from aicare_agent_service.rag.embeddings import BgeM3EmbeddingProvider
 from aicare_agent_service.rag.model_lock import ModelLockError, verify_model_lock
+from aicare_agent_service.rag.query_rewrite import QueryRewriter
+from aicare_agent_service.rag.readiness import RagReadinessProbe
 from aicare_agent_service.rag.reranker import BgeReranker
+from aicare_agent_service.rag.retriever import HybridKnowledgeRetriever
 
 T = TypeVar("T")
 
@@ -46,6 +51,13 @@ class BgeModelRuntime:
             thread_name_prefix="aicare-bge",
         )
         self._closed = False
+        self._warmed_up = False
+
+    @property
+    def ready(self) -> bool:
+        """模型已完成热身且运行时尚未关闭时返回True。"""
+        # 1、关闭或未完成两类模型热身都不能接收生产流量。
+        return self._warmed_up and not self._closed
 
     async def run(self, operation: Callable[[], T], *, deadline: float | None = None) -> T:
         """在有界执行器执行同步 CPU 推理，并以绝对超时丢弃迟到结果。"""
@@ -73,11 +85,14 @@ class BgeModelRuntime:
         await self.run(
             lambda: self.reranker_model.compute_score([["warmup", "warmup"]], normalize=True)
         )
+        # 3、两个模型均成功后才原子标记运行时就绪。
+        self._warmed_up = True
 
     async def close(self) -> None:
         """停止接收新推理并释放工作线程和模型引用。"""
         # 1、先标记关闭，阻止关闭过程进入新的推理任务。
         self._closed = True
+        self._warmed_up = False
         # 2、不等待不可取消的第三方CPU任务，避免ASGI关闭无限阻塞。
         self._executor.shutdown(wait=False, cancel_futures=True)
         # 3、释放大模型引用，使Python/PyTorch可以回收内存。
@@ -93,6 +108,9 @@ class RagRuntimeResources:
     models: BgeModelRuntime
     embeddings: BgeM3EmbeddingProvider
     reranker: BgeReranker
+    index: ElasticsearchKnowledgeIndex
+    retriever: HybridKnowledgeRetriever
+    readiness: RagReadinessProbe
 
 
 def _load_bge_models(model_paths: dict[str, Path]) -> tuple[Any, Any]:
@@ -128,6 +146,7 @@ async def create_rag_resources(settings: Settings) -> RagRuntimeResources:
     assert settings.elasticsearch_username is not None
     assert settings.elasticsearch_password is not None
     assert settings.elasticsearch_ca_cert_path is not None
+    assert settings.rag_chunk_hmac_key is not None
     runtime: BgeModelRuntime | None = None
     try:
         model_paths = verify_model_lock(
@@ -190,11 +209,35 @@ async def create_rag_resources(settings: Settings) -> RagRuntimeResources:
         expected_revision=settings.bge_reranker_revision,
         batch_size=settings.rag_reranker_batch_size,
     )
+    # 5、用同一ES/BGE单例装配生产索引与Hybrid Retriever，不注册内存或Fake回退。
+    index = ElasticsearchKnowledgeIndex(
+        client=elasticsearch,
+        index_prefix=settings.elasticsearch_index_prefix,
+        tenant_hmac_key=settings.rag_chunk_hmac_key.get_secret_value().encode(),
+        embedding_fingerprint=embeddings.model_fingerprint,
+    )
+    retriever = HybridKnowledgeRetriever(
+        rewriter=QueryRewriter(model_provider=create_model_provider(settings)),
+        embeddings=embeddings,
+        index=index,
+        reranker=reranker,
+        deadline_seconds=settings.rag_model_deadline_seconds,
+        evidence_score_threshold=settings.rag_evidence_score_threshold,
+    )
+    readiness = RagReadinessProbe(
+        settings=settings,
+        client=elasticsearch,
+        models=runtime,
+        embedding_fingerprint=embeddings.model_fingerprint,
+    )
     return RagRuntimeResources(
         elasticsearch=elasticsearch,
         models=runtime,
         embeddings=embeddings,
         reranker=reranker,
+        index=index,
+        retriever=retriever,
+        readiness=readiness,
     )
 
 

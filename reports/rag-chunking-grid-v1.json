@@ -1,0 +1,33 @@
+{
+  "reportVersion": "rag-chunk-grid-v1",
+  "productionHardLimitTokens": 640,
+  "targets": [256, 384, 512, 640],
+  "overlapPercents": [10, 15, 20],
+  "selectionRule": "recall_at_5 desc, ndcg_at_5 desc, target_tokens asc, overlap_percent asc",
+  "datasetVersion": "evaluation_dataset_v1_40_cases",
+  "status": "EXECUTED_EQUIVALENT_SHORT_DOCUMENTS",
+  "note": "All fixed evaluation documents remain below 256 tokens, so all twelve configurations produce the same exact document/version/chunk set and inherit the real 40-case retrieval metrics. The grid therefore does not justify changing the production 512/80 default; longer Task 20 documents must be reevaluated before tuning.",
+  "scores": [
+    {"target_tokens": 256, "overlap_percent": 10, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 256, "overlap_percent": 15, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 256, "overlap_percent": 20, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 384, "overlap_percent": 10, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 384, "overlap_percent": 15, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 384, "overlap_percent": 20, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 512, "overlap_percent": 10, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 512, "overlap_percent": 15, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 512, "overlap_percent": 20, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 640, "overlap_percent": 10, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 640, "overlap_percent": 15, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"},
+    {"target_tokens": 640, "overlap_percent": 20, "recall_at_5": 1.0, "ndcg_at_5": 0.9894551358163274, "report_version": "rag-chunk-grid-v1"}
+  ],
+  "selectedGridConfiguration": {
+    "target_tokens": 256,
+    "overlap_percent": 10
+  },
+  "selectedProductionConfiguration": {
+    "target_tokens": 512,
+    "overlap_tokens": 80,
+    "selectionReason": "Grid is tied on the current short-document dataset; retain the already validated production baseline instead of tuning on non-discriminating evidence."
+  }
+}

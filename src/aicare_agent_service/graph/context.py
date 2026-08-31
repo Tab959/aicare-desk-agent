@@ -4,6 +4,8 @@
 通过 ``AgentRuntimeContext`` 在运行时注入，避免连接对象或密钥进入持久化状态。
 """
 
+from __future__ import annotations
+
 # dataclass 自动生成初始化、比较等样板方法，让纯数据容器更简洁。
 from dataclasses import dataclass
 
@@ -11,17 +13,19 @@ from dataclasses import dataclass
 from datetime import datetime
 
 # Protocol 使用结构化子类型：对象只要实现规定方法，就可视为符合该协议。
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from aicare_agent_service.graph.state import AgentIdentity
 
 # ChatModelProvider 是按用途创建 LangChain 聊天模型的统一接口。
-from aicare_agent_service.models.contracts import ChatModelProvider
-from aicare_agent_service.tools.contracts import (
-    ToolArguments,
-    ToolInvocationResult,
-    ToolName,
-)
+if TYPE_CHECKING:
+    from aicare_agent_service.models.contracts import ChatModelProvider
+    from aicare_agent_service.rag.contracts import RetrievalQuery, RetrievalResult
+    from aicare_agent_service.tools.contracts import (
+        ToolArguments,
+        ToolInvocationResult,
+        ToolName,
+    )
 
 
 # Protocol 类不提供真实实现，只声明后续 Java 客户端适配器必须具备的形状。
@@ -44,6 +48,14 @@ class JavaBusinessClient(Protocol):
         ...
 
 
+class KnowledgeRetriever(Protocol):
+    """生产知识检索端口；根图和专业子图复用同一个应用级实例。"""
+
+    async def retrieve(self, query: RetrievalQuery) -> RetrievalResult:
+        """在运行时租户范围内返回有限且已重排的安全候选。"""
+        ...
+
+
 # frozen=True 禁止初始化后改字段；slots=True 不创建 __dict__，可减少内存并阻止随意加属性。
 @dataclass(frozen=True, slots=True)
 class AgentRuntimeContext:
@@ -57,3 +69,5 @@ class AgentRuntimeContext:
     model_provider: ChatModelProvider
     # 请求绝对截止时间；节点和客户端可据此拒绝已超时的工作。
     request_deadline: datetime
+    # 应用级生产检索器；仅知识能力需要，缺失时知识分支必须失败阻断。
+    knowledge_retriever: KnowledgeRetriever | None = None

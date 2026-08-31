@@ -36,8 +36,16 @@ class ReadinessChecks(BaseModel):
 
     # 当前阶段只检查配置是否成功解析；后续外部依赖检查不能在不更新契约时偷偷加入。
     configuration: Literal["UP", "DOWN"]
-    # RAG关闭时明确标记DISABLED；启用后必须由真实ES ping决定UP/DOWN。
+    # RAG关闭时明确标记DISABLED；启用后由四项生产检查汇总。
     elasticsearch: Literal["UP", "DOWN", "DISABLED"]
+    # 锁文件、revision、校验和、模型加载和热身状态。
+    rag_models: Literal["UP", "DOWN", "DISABLED"]
+    # ES集群至少达到yellow才可接收检索流量。
+    elasticsearch_cluster: Literal["UP", "DOWN", "DISABLED"]
+    # 版本化模板schema和Embedding指纹状态。
+    index_template: Literal["UP", "DOWN", "DISABLED"]
+    # 当前租户读写别名、write target和物理Mapping状态。
+    aliases_mapping: Literal["UP", "DOWN", "DISABLED"]
 
 
 class ReadinessResponse(HealthResponse):

@@ -39,6 +39,7 @@ dependencies = [
 [project.scripts]
 aicare-langgraph = "aicare_agent_service.dev.langgraph_cli:main"
 aicare-rag-models-init = "aicare_agent_service.rag.init_models:main"
+aicare-rag-index = "aicare_agent_service.rag.index_documents:main"
 
 # dependency-groups.dev只在开发/测试环境安装，不属于生产运行时必需包。
 [dependency-groups]
@@ -70,6 +71,7 @@ testpaths = ["tests"]
 pythonpath = ["src", "."]
 markers = [
     "bge_live: requires locked local BGE models and the real Elasticsearch runtime",
+    "elasticsearch_integration: requires the configured TLS Elasticsearch runtime and admin account",
     "redis_integration: requires a real Redis instance configured by AICARE_AGENT_TEST_REDIS_URL",
     "postgres_integration: requires a dedicated PostgreSQL instance configured by AICARE_AGENT_TEST_POSTGRES_DSN",
 ]

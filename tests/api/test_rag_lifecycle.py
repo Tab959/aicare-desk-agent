@@ -117,6 +117,8 @@ async def test_rag_resource_creation_closes_models_then_es_when_warmup_fails(
         rag_model_dir=tmp_path,
         bge_embedding_revision="a" * 40,
         bge_reranker_revision="b" * 40,
+        rag_chunk_hmac_key="c" * 32,
+        deepseek_api_key="test-deepseek-key",
         _env_file=None,
     )
 
@@ -159,6 +161,8 @@ async def test_rag_resources_expose_only_locked_production_model_adapters(
         rag_model_dir=tmp_path,
         bge_embedding_revision="a" * 40,
         bge_reranker_revision="b" * 40,
+        rag_chunk_hmac_key="c" * 32,
+        deepseek_api_key="test-deepseek-key",
         _env_file=None,
     )
 

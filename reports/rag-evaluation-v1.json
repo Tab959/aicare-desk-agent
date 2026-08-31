@@ -1,0 +1,30 @@
+{
+  "reportVersion": "rag-evaluation-v1",
+  "executedAt": "2026-08-31",
+  "runtime": "local Windows CPU, locked BGE-M3/BGE-Reranker, real Elasticsearch, DeepSeek and LangSmith",
+  "datasetCases": 40,
+  "retrieval": {
+    "recall_at_5": 1.0,
+    "mrr": 0.9857142857142858,
+    "ndcg_at_5": 0.9894551358163274,
+    "multihop_recall_at_8": 1.0,
+    "cross_tenant_leaks": 0,
+    "evaluated_answerable_cases": 35
+  },
+  "generation": {
+    "faithfulness": 1.0,
+    "answer_relevance": 1.0,
+    "citation_coverage": 1.0,
+    "unsupported_claim_rate": 0.0
+  },
+  "cpuLatencyMs": {
+    "embeddingBatch": 2301.91,
+    "retrievalP50": 8743.5,
+    "retrievalP95": 9887.1,
+    "rerankP50": 1442.83,
+    "rerankP95": 1474.89,
+    "endToEndP50": 19469.31,
+    "endToEndP95": 19469.31
+  },
+  "capacityClaim": false
+}

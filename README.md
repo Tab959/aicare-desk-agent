@@ -1,49 +1,17 @@
 # AICare Agent Service
 
-Stage 4的Python Agent服务。当前工程提供可锁定依赖、统一Settings、FastAPI健康探针、DeepSeek Provider、PostgreSQL Checkpointer、Redis RunStore、可恢复run生命周期，以及安全预处理、结构化分类、固定路由、输出门禁和终态封装组成的正式LangGraph根图；同时已提供Java只读工具生产客户端、20个固定LangChain工具和专业Agent最小权限能力包，专业子图与RAG将在后续Task接入。
+Stage 4的Python Agent服务。当前工程提供可锁定依赖、统一Settings、FastAPI健康探针、DeepSeek Provider、PostgreSQL Checkpointer、Redis RunStore、可恢复run生命周期，以及安全预处理、结构化分类、固定路由、输出门禁和终态封装组成的正式LangGraph根图；同时已提供Java只读工具生产客户端、20个固定LangChain工具、专业Agent最小权限能力包，以及安全文档解析、锁定BGE模型、Elasticsearch版本化索引、Hybrid Retrieval和带引用的Knowledge RAG子图。售前、订单和售后专业子图仍由Task 7实现。
 
 ## 四个应用仓库
 
 | 应用 | 仓库 | 默认端口 | 职责 |
 | --- | --- | --- | --- |
-| platform-api | `aicare-desk-platform-api` | `8080` | Java 业务后端，系统事实来源 |
-| customer-web | `aicare-desk-customer-web` | `5173` | C 端 Steam 游戏商城 |
-| staff-web | `aicare-desk-staff-web` | `5174` | B 端客服、运营和管理工作台 |
-| agent-service | `aicare-desk-agent` | `8090` / `2024` | Python Agent、LangGraph、RAG 和模型编排 |
+| platform-api | `aicare-desk-platform-api` | `8080` | Java业务后端，系统事实来源 |
+| customer-web | `aicare-desk-customer-web` | `5173` | C端Steam游戏商城 |
+| staff-web | `aicare-desk-staff-web` | `5174` | B端客服、运营和管理工作台 |
+| agent-service | `aicare-desk-agent` | `8090` / `2024` | Python Agent、LangGraph、RAG和模型编排 |
 
-## 启动方式汇总
-
-四个应用拆分为独立仓库后，推荐按以下顺序启动本地开发环境：
-
-1. 启动 `platform-api`，默认提供 `http://localhost:8080`。
-2. 启动 `agent-service` FastAPI，默认提供 `http://127.0.0.1:8090`。
-3. 如需调试 LangGraph/Agent Chat UI，启动 `agent-service` 的 LangGraph dev，默认提供 `http://127.0.0.1:2024`。
-4. 启动 `customer-web`，默认提供 `http://localhost:5173`。
-5. 启动 `staff-web`，默认提供 `http://localhost:5174`。
-
-完整命令：
-
-```powershell
-# 1. Java 后端
-Set-Location D:\code\AICareDesk\aicare-desk-platform-api
-mvn spring-boot:run
-
-# 2. Python Agent FastAPI
-Set-Location D:\code\AICareDesk\aicare-desk-agent
-.\.venv\Scripts\python.exe -m uvicorn aicare_agent_service.main:app --app-dir src --host 127.0.0.1 --port 8090
-
-# 3. LangGraph dev / Agent Chat UI 调试服务
-Set-Location D:\code\AICareDesk\aicare-desk-agent
-.\.venv\Scripts\aicare-langgraph.exe dev --config langgraph.json --no-browser
-
-# 4. C 端前端
-Set-Location D:\code\AICareDesk\aicare-desk-customer-web
-pnpm dev
-
-# 5. B 端前端
-Set-Location D:\code\AICareDesk\aicare-desk-staff-web
-pnpm dev
-```
+四个应用已经拆分为独立Git仓库。本仓库命令均从`D:\code\AICareDesk\aicare-desk-agent`执行；Java契约或实现修改应进入`D:\code\AICareDesk\aicare-desk-platform-api`，不再使用旧`backend`或`.worktrees`路径。
 
 ## 边界
 
@@ -83,7 +51,7 @@ py -3.13 -m venv .venv
 - `AICARE_AGENT_JAVA_BASE_URL`
 - `AICARE_AGENT_JAVA_SERVICE_TOKEN`
 
-当前私有`.env`显式列出所有已知配置变量；生产环境不会依赖PostgreSQL、Redis、AES、Provider、超时和保留期等安全关键默认值。Elasticsearch与真实基础设施测试变量允许保持空：前者尚未部署且RAG适配尚未实现，后者仅用于显式pytest测试，不能指向生产数据。
+当前私有`.env`显式列出所有已知配置变量；生产环境不会依赖PostgreSQL、Redis、AES、Provider、超时和保留期等安全关键默认值。Elasticsearch已使用TLS、在线最小权限账号和独立索引管理账号；管理凭据只注入显式索引CLI，不注入在线服务容器。真实基础设施测试开关默认关闭，不能指向不可删除的生产租户数据。
 
 默认Provider为`deepseek`，默认模型为`deepseek-v4-pro`；私有`.env`仍显式设置模型ID，避免生产行为依赖代码默认值：
 
@@ -103,7 +71,9 @@ AICARE_AGENT_DEEPSEEK_MODEL=deepseek-v4-pro
 2. `create_app()`调用`get_settings()`读取进程环境和`.env`，执行生产配置门禁，并注册健康路由与持久化lifespan。
 3. lifespan创建LangGraph Checkpointer；生产环境通过三个Sentinel发现当前Redis master，再执行生产就绪审计并创建`RedisRunStore`和`AgentRunLifecycle`；随后创建唯一进程级HTTPX/Java工具客户端。退出时按Java HTTPX→Redis→Checkpointer的相反顺序关闭资源。
 4. FastAPI目前只对外提供健康/就绪探针；尚没有Java调用的正式Agent生成Controller或流式端点。
-5. Agent Server根据`langgraph.json`加载正式`customer_service`根图和独立`model_playground`；Server通过自定义资源注入同一套加密PostgreSQL Checkpointer。专业子图尚未交付时，正式根图对专业路由明确失败并交给run生命周期层处理，不生成伪业务回答。
+5. Agent Server根据`langgraph.json`加载正式`customer_service`根图和独立`model_playground`；Server通过自定义资源注入同一套加密PostgreSQL Checkpointer。Knowledge RAG子图已经交付，售前、订单和售后专业子图仍等待Task 7装配；未装配能力会明确失败，不生成伪业务回答。
+
+Knowledge RAG固定执行`prepare_query → hybrid_retrieve → evidence_gate → generate → verify`。证据不足不调用回答模型；证据充分时回答只能使用最多6条候选并以`[K1]`至`[K6]`绑定Citation。审核失败最多修正一次，第二次失败返回固定证据不足答复。局部子图没有独立Checkpointer或thread，ES原始响应、Embedding和完整解析文档不会合并进父图状态。订单、余额、权益、退款和工单实时事实仍必须调用Java工具，知识回答不能替代业务查询。
 
 已经实现并通过测试、但要等待正式Agent Gateway端点和根客服图接线的核心链路：
 
@@ -148,7 +118,7 @@ run生命周期由`AgentRunLifecycle`统一编排。`AICARE_AGENT_RUN_HEARTBEAT_
 
 Redis终态run按`AICARE_AGENT_RUN_RETENTION_SECONDS`自动过期；PostgreSQL checkpoint由显式维护命令按`AICARE_AGENT_CHECKPOINT_RETENTION_SECONDS`清理。RUNNING run使用无TTL的conversation active标记阻止清理，终态原子删除；若run ledger已过期，活跃检查会原子清除悬空标记。实际删除前还会获取短时cleanup guard，阻止同一会话启动新run，并保证单thread删除超时严格短于guard。
 
-Elasticsearch和RabbitMQ配置将在RAG、知识事件Task启用，目前允许留空。
+Elasticsearch配置在RAG启用时为生产必填；RabbitMQ知识事件消费仍留待Task 9实现。
 
 LangSmith本地追踪使用：
 
@@ -175,7 +145,7 @@ LANGSMITH_PROJECT=aicare-agent-service-dev
 - `GET http://127.0.0.1:8090/api/v1/agent/health`
 - `GET http://127.0.0.1:8090/health/ready`
 
-`/health/ready`当前只表示本地配置校验通过，不代表DeepSeek、PostgreSQL或Java连通。
+`/health`和`/api/v1/agent/health`是零外部调用的liveness。`/health/ready`在RAG启用后会真实验证模型锁与热身、ES集群状态、版本化索引模板、当前租户读写别名以及Mapping/Embedding fingerprint；任一项失败返回503。该探针不隐式下载模型、创建索引、切换别名或修复Mapping。
 
 ## 初始化PostgreSQL Checkpointer
 
@@ -258,6 +228,25 @@ NEXT_PUBLIC_AUTH_SCHEME=
 
 Agent Chat UI仅用于本地开发调试。DeepSeek与LangSmith Key只保存在Agent服务Git忽略的`.env`中，不得复制到UI目录。它不是商城C端，也不能替代Java会话网关。
 
+## 初始化和重建RAG索引
+
+Elasticsearch关闭自动建索引；FastAPI启动和普通RAG请求不会隐式创建模板、物理索引或执行迁移。首次部署先给独立管理进程注入`AICARE_AGENT_ELASTICSEARCH_ADMIN_USERNAME`和`AICARE_AGENT_ELASTICSEARCH_ADMIN_PASSWORD`，再显式执行：
+
+```powershell
+.\.venv\Scripts\aicare-rag-index.exe install-template
+.\.venv\Scripts\aicare-rag-index.exe init-tenant --tenant-id 'java-generated-tenant-id'
+```
+
+重建时先创建新物理代次，完成全量索引和校验后再原子切换别名：
+
+```powershell
+.\.venv\Scripts\aicare-rag-index.exe create --tenant-id 'java-generated-tenant-id' --generation 2
+# 先通过受控同步流程把该租户全部已发布文档写入generation 2并完成核验。
+.\.venv\Scripts\aicare-rag-index.exe switch --tenant-id 'java-generated-tenant-id' --generation 2
+```
+
+切换不会自动删除旧物理索引，避免误删回滚窗口；旧代次应由后续受审计的保留期清理任务处理。在线账号只拥有`read`、`write`、`maintenance`和`view_index_metadata`，不拥有模板管理、索引管理或跨前缀权限。
+
 ## 测试
 
 ```powershell
@@ -293,6 +282,30 @@ $env:LANGSMITH_TRACING='true'
 ```
 
 该命令会读取DeepSeek模型列表、读取最多一个LangSmith Project，发送一次结构化输出和一次流式模型请求，并在`LANGSMITH_PROJECT`对应项目创建带`task2-live`标签的开发Trace。测试只使用虚构Prompt和非敏感元数据，但仍会产生少量模型费用；不要把真实用户、订单、权益或会话数据加入此测试。
+
+真实Elasticsearch生命周期与完整Hybrid Retrieval验收也默认跳过。它们使用随机租户HMAC命名空间并在结束时只删除本次创建的物理索引：
+
+```powershell
+$env:AICARE_RUN_ELASTICSEARCH_INTEGRATION='true'
+.\.venv\Scripts\python.exe -m pytest tests\rag\test_elasticsearch_integration.py -q
+
+$env:AICARE_RUN_RAG_RETRIEVAL_LIVE='1'
+.\.venv\Scripts\python.exe -m pytest tests\rag\test_retrieval_live.py -q -s
+```
+
+第二条命令会加载锁定BGE-M3和BGE Reranker、调用真实DeepSeek并回查LangSmith，CPU内存和模型费用都高于普通测试；只能使用测试文档和测试租户。
+
+真实Knowledge RAG子图和40条人工检索集评测使用以下显式开关：
+
+```powershell
+$env:AICARE_RUN_RAG_SUBGRAPH_LIVE='1'
+.\.venv\Scripts\python.exe -m pytest tests\subgraphs\test_knowledge_rag_live.py -q -s
+
+$env:AICARE_RUN_RAG_EVALUATION_LIVE='1'
+.\.venv\Scripts\python.exe -m pytest tests\rag\test_rag_live.py -q -s
+```
+
+评测集分别覆盖15条精确事实、10条同义表达、5条多跳、5条业务过滤和5条无答案/对抗请求。检索门禁为Recall@5≥0.90、MRR≥0.80、NDCG@5≥0.80、跨租户泄漏=0；生成门禁为faithfulness≥0.95、answer relevance≥0.90、citation coverage=1.00、unsupported claim=0。当前真实结果记录在`reports/rag-evaluation-v1.json`，CPU延迟仅代表本次本机运行，不是容量上限。Chunk网格固定为`256/384/512/640 × 10%/15%/20%`，640为生产硬上限；版本化网格结果见`reports/rag-chunking-grid-v1.json`。
 
 ## 安全
 

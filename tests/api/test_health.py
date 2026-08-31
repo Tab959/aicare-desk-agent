@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from aicare_agent_service.api import lifecycle
 from aicare_agent_service.api.app import create_app
 from aicare_agent_service.config import Environment, Settings, get_settings
+from aicare_agent_service.rag.readiness import RagReadinessReport
 
 
 def test_create_app_keeps_legacy_health_routes(test_settings: Settings) -> None:
@@ -33,7 +34,14 @@ def test_readiness_reports_configuration_without_calling_dependencies(
         "status": "UP",
         "service": "aicare-agent-service",
         "version": "0.1.0",
-        "checks": {"configuration": "UP", "elasticsearch": "DISABLED"},
+        "checks": {
+            "configuration": "UP",
+            "elasticsearch": "DISABLED",
+            "rag_models": "DISABLED",
+            "elasticsearch_cluster": "DISABLED",
+            "index_template": "DISABLED",
+            "aliases_mapping": "DISABLED",
+        },
     }
 
 
@@ -46,12 +54,18 @@ def test_readiness_reflects_live_elasticsearch_ping(
     status_code: int,
     status: str,
 ) -> None:
-    class ProbeElasticsearch:
-        async def ping(self) -> bool:
-            return ping_result
+    class ProbeReadiness:
+        async def check(self) -> RagReadinessReport:
+            value = "UP" if ping_result else "DOWN"
+            return RagReadinessReport(
+                models=value,
+                elasticsearch_cluster=value,
+                index_template=value,
+                aliases_mapping=value,
+            )
 
     class ProbeResources:
-        elasticsearch = ProbeElasticsearch()
+        readiness = ProbeReadiness()
 
     @asynccontextmanager
     async def fake_rag_lifespan(app):

@@ -381,6 +381,17 @@ class Settings(BaseSettings):
         default=None,
         validation_alias="AICARE_AGENT_ELASTICSEARCH_PASSWORD",
     )
+    # 仅显式索引初始化/重建CLI使用的管理账号；在线应用绝不读取或回退到该凭据。
+    elasticsearch_admin_username: str | None = Field(
+        default=None,
+        min_length=1,
+        validation_alias="AICARE_AGENT_ELASTICSEARCH_ADMIN_USERNAME",
+    )
+    # 管理账号密码与在线最小权限账号分离，生产服务进程可不注入。
+    elasticsearch_admin_password: SecretStr | None = Field(
+        default=None,
+        validation_alias="AICARE_AGENT_ELASTICSEARCH_ADMIN_PASSWORD",
+    )
     # 签发HTTP节点证书的CA文件；支持证书轮换时替换并重启进程。
     elasticsearch_ca_cert_path: Path | None = Field(
         default=None,
@@ -462,6 +473,13 @@ class Settings(BaseSettings):
         gt=0,
         le=300,
         validation_alias="AICARE_AGENT_RAG_MODEL_DEADLINE_SECONDS",
+    )
+    # BGE Reranker证据门禁阈值；当前0.45由Task 8F真实锁定模型基线验证，Task 8H再评测校准。
+    rag_evidence_score_threshold: float = Field(
+        default=0.45,
+        ge=0,
+        le=1,
+        validation_alias="AICARE_AGENT_RAG_EVIDENCE_SCORE_THRESHOLD",
     )
     # ================================================================================
     # 预留知识事件RabbitMQ连接，原始文档和大正文不通过消息传输。

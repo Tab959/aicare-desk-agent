@@ -8,6 +8,8 @@ aicare_agent_rag:
       privileges:
         - read
         - write
+        # 文档版本切换后需要refresh旧Chunk删除结果，保证成功返回时不再召回旧版本。
+        - maintenance
         - view_index_metadata
       allow_restricted_indices: false
 
